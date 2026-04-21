@@ -2,7 +2,11 @@ package model.research;
 
 import enums.CitationFormat;
 
-public class ResearchPaper {
+import java.io.Serializable;
+
+public class ResearchPaper implements Serializable, Comparable<ResearchPaper> {
+    private static final long serialVersionUID = 1L;
+
     private String title;
     private String authors;
     private String journal;
@@ -100,6 +104,23 @@ public class ResearchPaper {
                 ", pages: " + pages +
                 ", citations: " + citations +
                 ", doi: " + doi;
+    }
+
+    @Override
+    public int compareTo(ResearchPaper other) {
+        if (other == null) {
+            return 1;
+        }
+
+        return safeString(title).compareToIgnoreCase(safeString(other.title));
+    }
+
+    private String safeString(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return value;
     }
 
     @Override

@@ -20,6 +20,13 @@ public class RequestService {
         return request;
     }
 
+    public Request createComplaint(String id, String teacherLogin, String text,
+                                   UrgencyLevel urgencyLevel, String createdDate) {
+        Request complaint = new Request(id, teacherLogin, text, Request.TYPE_COMPLAINT, urgencyLevel, createdDate);
+        dataStore.addRequest(complaint);
+        return complaint;
+    }
+
     public void markViewed(Request request) {
         request.markViewed();
     }

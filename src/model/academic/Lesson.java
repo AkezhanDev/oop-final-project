@@ -2,7 +2,11 @@ package model.academic;
 
 import enums.LessonType;
 
-public class Lesson {
+import java.io.Serializable;
+
+public class Lesson implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private LessonType lessonType;
     private String day;
     private String time;

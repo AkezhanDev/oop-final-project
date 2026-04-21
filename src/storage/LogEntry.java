@@ -1,6 +1,10 @@
 package storage;
 
-public class LogEntry {
+import java.io.Serializable;
+
+public class LogEntry implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String action;
     private String timestamp;
     private String userLogin;

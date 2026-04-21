@@ -11,12 +11,22 @@ import model.research.Journal;
 import model.research.ResearchProject;
 import model.users.User;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DataStore {
+public class DataStore implements Serializable {
+    private static final long serialVersionUID = 1L;
+    public static final String DEFAULT_FILE_NAME = "university_data.ser";
+
     private static DataStore instance;
 
     private List<User> users;
@@ -50,6 +60,83 @@ public class DataStore {
             instance = new DataStore();
         }
         return instance;
+    }
+
+    public static DataStore loadFromFile(String fileName) {
+        File file = new File(fileName);
+
+        if (!file.exists()) {
+            instance = new DataStore();
+            return instance;
+        }
+
+        try (ObjectInputStream inputStream = new ObjectInputStream(new FileInputStream(file))) {
+            instance = (DataStore) inputStream.readObject();
+            instance.initializeMissingCollections();
+            User.synchronizeNextId(instance.users);
+            return instance;
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Could not load saved data. Starting with empty data store.");
+            instance = new DataStore();
+            return instance;
+        }
+    }
+
+    public void saveToFile(String fileName) {
+        try (ObjectOutputStream outputStream = new ObjectOutputStream(new FileOutputStream(fileName))) {
+            outputStream.writeObject(this);
+        } catch (IOException e) {
+            System.out.println("Could not save data: " + e.getMessage());
+        }
+    }
+
+    private void initializeMissingCollections() {
+        if (users == null) {
+            users = new ArrayList<>();
+        }
+        if (logs == null) {
+            logs = new ArrayList<>();
+        }
+        if (courses == null) {
+            courses = new ArrayList<>();
+        }
+        if (registrations == null) {
+            registrations = new ArrayList<>();
+        }
+        if (newsList == null) {
+            newsList = new ArrayList<>();
+        }
+        if (messages == null) {
+            messages = new ArrayList<>();
+        }
+        if (requests == null) {
+            requests = new ArrayList<>();
+        }
+        if (journals == null) {
+            journals = new ArrayList<>();
+        }
+        if (researchProjects == null) {
+            researchProjects = new ArrayList<>();
+        }
+        if (transcripts == null) {
+            transcripts = new HashMap<>();
+        }
+        if (attendanceRecords == null) {
+            attendanceRecords = new ArrayList<>();
+        }
+    }
+
+    public boolean isEmpty() {
+        return users.isEmpty()
+                && courses.isEmpty()
+                && registrations.isEmpty()
+                && newsList.isEmpty()
+                && messages.isEmpty()
+                && requests.isEmpty()
+                && journals.isEmpty()
+                && researchProjects.isEmpty()
+                && transcripts.isEmpty()
+                && attendanceRecords.isEmpty();
     }
 
     public List<User> getUsers() {
@@ -98,6 +185,10 @@ public class DataStore {
 
     public void addUser(User user) {
         users.add(user);
+    }
+
+    public boolean removeUser(User user) {
+        return users.remove(user);
     }
 
     public void addLog(LogEntry logEntry) {

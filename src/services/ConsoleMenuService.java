@@ -1,26 +1,38 @@
 package services;
 
 import enums.CitationFormat;
+import enums.Language;
+import enums.ManagerType;
+import enums.TeacherPosition;
 import enums.UrgencyLevel;
 import exceptions.AuthenticationFailedException;
 import exceptions.CreditLimitExceededException;
+import exceptions.InvalidSupervisorException;
+import interfaces.Researcher;
 import model.academic.AttendanceRecord;
 import model.academic.Course;
 import model.academic.Mark;
 import model.academic.Registration;
 import model.academic.Transcript;
 import model.communication.Comment;
+import model.communication.Message;
 import model.communication.News;
 import model.requests.Request;
 import model.users.Admin;
+import model.users.Employee;
 import model.users.Manager;
 import model.users.Student;
 import model.users.Teacher;
 import model.users.TechSupportSpecialist;
 import model.users.User;
 import storage.DataStore;
+import storage.LogEntry;
+import util.UserFactory;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Scanner;
 
 public class ConsoleMenuService {
@@ -185,6 +197,10 @@ public class ConsoleMenuService {
             System.out.println("7. Create request");
             System.out.println("8. Mark attendance");
             System.out.println("9. View attendance records");
+            System.out.println("10. Send complaint");
+            System.out.println("11. Send message");
+            System.out.println("12. View my messages");
+            System.out.println("13. View assigned courses");
             System.out.println("0. Logout");
             System.out.print("Choose an option: ");
 
@@ -218,6 +234,18 @@ public class ConsoleMenuService {
                 case "9":
                     viewAttendanceRecords();
                     break;
+                case "10":
+                    createTeacherComplaint(teacher);
+                    break;
+                case "11":
+                    sendMessage(teacher);
+                    break;
+                case "12":
+                    viewMyMessages(teacher);
+                    break;
+                case "13":
+                    viewAssignedCourses(teacher);
+                    break;
                 case "0":
                     inMenu = false;
                     System.out.println("Logged out.");
@@ -243,6 +271,10 @@ public class ConsoleMenuService {
             System.out.println("7. View news");
             System.out.println("8. Create pinned research news");
             System.out.println("9. Announce top cited researcher");
+            System.out.println("10. Send message");
+            System.out.println("11. View my messages");
+            System.out.println("12. Assign teacher to course");
+            System.out.println("13. View statistical report");
             System.out.println("0. Logout");
             System.out.print("Choose an option: ");
 
@@ -276,6 +308,18 @@ public class ConsoleMenuService {
                 case "9":
                     announceTopCitedResearcher();
                     break;
+                case "10":
+                    sendMessage(manager);
+                    break;
+                case "11":
+                    viewMyMessages(manager);
+                    break;
+                case "12":
+                    assignTeacherToCourse();
+                    break;
+                case "13":
+                    viewManagerStatisticalReport();
+                    break;
                 case "0":
                     inMenu = false;
                     System.out.println("Logged out.");
@@ -296,6 +340,11 @@ public class ConsoleMenuService {
             System.out.println("2. View logs");
             System.out.println("3. View users");
             System.out.println("4. View news");
+            System.out.println("5. Add user");
+            System.out.println("6. Remove user");
+            System.out.println("7. Update user");
+            System.out.println("8. Send message");
+            System.out.println("9. View my messages");
             System.out.println("0. Logout");
             System.out.print("Choose an option: ");
 
@@ -318,6 +367,21 @@ public class ConsoleMenuService {
                 case "4":
                     viewAllNews();
                     break;
+                case "5":
+                    addUserAsAdmin(admin);
+                    break;
+                case "6":
+                    removeUserAsAdmin(admin);
+                    break;
+                case "7":
+                    updateUserAsAdmin(admin);
+                    break;
+                case "8":
+                    sendMessage(admin);
+                    break;
+                case "9":
+                    viewMyMessages(admin);
+                    break;
                 case "0":
                     inMenu = false;
                     System.out.println("Logged out.");
@@ -326,6 +390,348 @@ public class ConsoleMenuService {
                     System.out.println("Invalid option. Try again.");
             }
         }
+    }
+
+    private void addUserAsAdmin(Admin admin) {
+        System.out.println("Choose user type:");
+        System.out.println("1. User");
+        System.out.println("2. Student");
+        System.out.println("3. Graduate student");
+        System.out.println("4. Employee");
+        System.out.println("5. Teacher");
+        System.out.println("6. Manager");
+        System.out.println("7. Admin");
+        System.out.println("8. Tech support specialist");
+        System.out.print("Your choice: ");
+        String userType = scanner.nextLine();
+
+        System.out.print("Enter login: ");
+        String login = scanner.nextLine();
+
+        if (dataStore.findUserByLogin(login) != null) {
+            System.out.println("User with this login already exists.");
+            return;
+        }
+
+        System.out.print("Enter password: ");
+        String password = scanner.nextLine();
+
+        System.out.print("Enter name: ");
+        String name = scanner.nextLine();
+
+        Language language = readLanguage();
+        User newUser;
+
+        switch (userType) {
+            case "1":
+                newUser = UserFactory.createUser(login, password, name, language);
+                break;
+            case "2":
+                newUser = createStudentWithFactory(login, password, name, language);
+                break;
+            case "3":
+                newUser = createGraduateStudentWithFactory(login, password, name, language);
+                if (newUser == null) {
+                    return;
+                }
+                break;
+            case "4":
+                newUser = createEmployeeWithFactory(login, password, name, language);
+                break;
+            case "5":
+                newUser = createTeacherWithFactory(login, password, name, language);
+                break;
+            case "6":
+                newUser = createManagerWithFactory(login, password, name, language);
+                break;
+            case "7":
+                newUser = createAdminWithFactory(login, password, name, language);
+                break;
+            case "8":
+                newUser = createTechSupportWithFactory(login, password, name, language);
+                break;
+            default:
+                System.out.println("Invalid user type.");
+                return;
+        }
+
+        dataStore.addUser(newUser);
+        addAdminLog("Added user " + login, admin);
+        System.out.println("User added: " + newUser);
+    }
+
+    private User createStudentWithFactory(String login, String password, String name, Language language) {
+        System.out.print("Enter student ID: ");
+        String studentId = scanner.nextLine();
+
+        System.out.print("Enter year of study: ");
+        int yearOfStudy = Integer.parseInt(scanner.nextLine());
+
+        System.out.print("Enter major: ");
+        String major = scanner.nextLine();
+
+        System.out.print("Enter credits: ");
+        int credits = Integer.parseInt(scanner.nextLine());
+
+        System.out.print("Enter failed courses count: ");
+        int failedCoursesCount = Integer.parseInt(scanner.nextLine());
+
+        return UserFactory.createStudent(login, password, name, language,
+                studentId, yearOfStudy, major, credits, failedCoursesCount);
+    }
+
+    private User createGraduateStudentWithFactory(String login, String password, String name, Language language) {
+        System.out.print("Enter student ID: ");
+        String studentId = scanner.nextLine();
+
+        System.out.print("Enter year of study: ");
+        int yearOfStudy = Integer.parseInt(scanner.nextLine());
+
+        System.out.print("Enter major: ");
+        String major = scanner.nextLine();
+
+        System.out.print("Enter credits: ");
+        int credits = Integer.parseInt(scanner.nextLine());
+
+        System.out.print("Enter failed courses count: ");
+        int failedCoursesCount = Integer.parseInt(scanner.nextLine());
+
+        System.out.print("Enter degree type: ");
+        String degreeType = scanner.nextLine();
+
+        System.out.print("Enter supervisor login: ");
+        String supervisorLogin = scanner.nextLine();
+
+        User supervisorUser = dataStore.findUserByLogin(supervisorLogin);
+
+        if (!(supervisorUser instanceof Researcher)) {
+            System.out.println("Supervisor must be a researcher.");
+            return null;
+        }
+
+        System.out.print("Enter published papers count: ");
+        int publishedPapersCount = Integer.parseInt(scanner.nextLine());
+
+        try {
+            return UserFactory.createGraduateStudent(login, password, name, language,
+                    studentId, yearOfStudy, major, credits, failedCoursesCount,
+                    degreeType, (Researcher) supervisorUser, publishedPapersCount);
+        } catch (InvalidSupervisorException e) {
+            System.out.println(e.getMessage());
+            return null;
+        }
+    }
+
+    private User createEmployeeWithFactory(String login, String password, String name, Language language) {
+        System.out.print("Enter employee ID: ");
+        String employeeId = scanner.nextLine();
+
+        System.out.print("Enter department: ");
+        String department = scanner.nextLine();
+
+        System.out.print("Enter salary: ");
+        double salary = Double.parseDouble(scanner.nextLine());
+
+        return UserFactory.createEmployee(login, password, name, language,
+                employeeId, department, salary);
+    }
+
+    private User createTeacherWithFactory(String login, String password, String name, Language language) {
+        System.out.print("Enter employee ID: ");
+        String employeeId = scanner.nextLine();
+
+        System.out.print("Enter department: ");
+        String department = scanner.nextLine();
+
+        System.out.print("Enter salary: ");
+        double salary = Double.parseDouble(scanner.nextLine());
+
+        TeacherPosition position = readTeacherPosition();
+
+        System.out.print("Enter rating: ");
+        double rating = Double.parseDouble(scanner.nextLine());
+
+        return UserFactory.createTeacher(login, password, name, language,
+                employeeId, department, salary, position, rating);
+    }
+
+    private User createManagerWithFactory(String login, String password, String name, Language language) {
+        System.out.print("Enter employee ID: ");
+        String employeeId = scanner.nextLine();
+
+        System.out.print("Enter department: ");
+        String department = scanner.nextLine();
+
+        System.out.print("Enter salary: ");
+        double salary = Double.parseDouble(scanner.nextLine());
+
+        ManagerType managerType = readManagerType();
+
+        return UserFactory.createManager(login, password, name, language,
+                employeeId, department, salary, managerType);
+    }
+
+    private User createAdminWithFactory(String login, String password, String name, Language language) {
+        System.out.print("Enter employee ID: ");
+        String employeeId = scanner.nextLine();
+
+        System.out.print("Enter department: ");
+        String department = scanner.nextLine();
+
+        System.out.print("Enter salary: ");
+        double salary = Double.parseDouble(scanner.nextLine());
+
+        return UserFactory.createAdmin(login, password, name, language,
+                employeeId, department, salary);
+    }
+
+    private User createTechSupportWithFactory(String login, String password, String name, Language language) {
+        System.out.print("Enter employee ID: ");
+        String employeeId = scanner.nextLine();
+
+        System.out.print("Enter department: ");
+        String department = scanner.nextLine();
+
+        System.out.print("Enter salary: ");
+        double salary = Double.parseDouble(scanner.nextLine());
+
+        System.out.print("Enter specialization: ");
+        String specialization = scanner.nextLine();
+
+        return UserFactory.createTechSupportSpecialist(login, password, name, language,
+                employeeId, department, salary, specialization);
+    }
+
+    private void removeUserAsAdmin(Admin admin) {
+        System.out.print("Enter login of user to remove: ");
+        String login = scanner.nextLine();
+
+        User user = dataStore.findUserByLogin(login);
+
+        if (user == null) {
+            System.out.println("User not found.");
+            return;
+        }
+
+        if (user.equals(admin)) {
+            System.out.println("Admin cannot remove own account.");
+            return;
+        }
+
+        if (dataStore.removeUser(user)) {
+            addAdminLog("Removed user " + login, admin);
+            System.out.println("User removed.");
+        } else {
+            System.out.println("User could not be removed.");
+        }
+    }
+
+    private void updateUserAsAdmin(Admin admin) {
+        System.out.print("Enter login of user to update: ");
+        String oldLogin = scanner.nextLine();
+
+        User user = dataStore.findUserByLogin(oldLogin);
+
+        if (user == null) {
+            System.out.println("User not found.");
+            return;
+        }
+
+        System.out.print("Enter new login or press Enter to keep current: ");
+        String newLogin = scanner.nextLine();
+
+        if (!newLogin.isEmpty() && !newLogin.equalsIgnoreCase(oldLogin)) {
+            if (dataStore.findUserByLogin(newLogin) != null) {
+                System.out.println("User with this login already exists.");
+                return;
+            }
+            user.setLogin(newLogin);
+        }
+
+        System.out.print("Enter new password or press Enter to keep current: ");
+        String newPassword = scanner.nextLine();
+        if (!newPassword.isEmpty()) {
+            user.setPassword(newPassword);
+        }
+
+        System.out.print("Enter new name or press Enter to keep current: ");
+        String newName = scanner.nextLine();
+        if (!newName.isEmpty()) {
+            user.setName(newName);
+        }
+
+        System.out.print("Change language? (yes/no): ");
+        String changeLanguage = scanner.nextLine();
+        if (changeLanguage.equalsIgnoreCase("yes")) {
+            user.setLanguage(readLanguage());
+        }
+
+        addAdminLog("Updated user " + oldLogin, admin);
+        System.out.println("User updated: " + user);
+    }
+
+    private Language readLanguage() {
+        System.out.println("Choose language:");
+        System.out.println("1. EN");
+        System.out.println("2. RU");
+        System.out.println("3. KZ");
+        System.out.print("Your choice: ");
+        String choice = scanner.nextLine();
+
+        switch (choice) {
+            case "2":
+                return Language.RU;
+            case "3":
+                return Language.KZ;
+            case "1":
+            default:
+                return Language.EN;
+        }
+    }
+
+    private TeacherPosition readTeacherPosition() {
+        System.out.println("Choose teacher position:");
+        System.out.println("1. TUTOR");
+        System.out.println("2. LECTOR");
+        System.out.println("3. SENIOR_LECTOR");
+        System.out.println("4. PROFESSOR");
+        System.out.print("Your choice: ");
+        String choice = scanner.nextLine();
+
+        switch (choice) {
+            case "2":
+                return TeacherPosition.LECTOR;
+            case "3":
+                return TeacherPosition.SENIOR_LECTOR;
+            case "4":
+                return TeacherPosition.PROFESSOR;
+            case "1":
+            default:
+                return TeacherPosition.TUTOR;
+        }
+    }
+
+    private ManagerType readManagerType() {
+        System.out.println("Choose manager type:");
+        System.out.println("1. OR");
+        System.out.println("2. DEPARTMENT");
+        System.out.println("3. DEAN_OFFICE");
+        System.out.print("Your choice: ");
+        String choice = scanner.nextLine();
+
+        switch (choice) {
+            case "2":
+                return ManagerType.DEPARTMENT;
+            case "3":
+                return ManagerType.DEAN_OFFICE;
+            case "1":
+            default:
+                return ManagerType.OR;
+        }
+    }
+
+    private void addAdminLog(String action, Admin admin) {
+        dataStore.addLog(new LogEntry(action, LocalDateTime.now().toString(), admin.getLogin()));
     }
 
     private void openTechSupportMenu(TechSupportSpecialist specialist) {
@@ -337,6 +743,8 @@ public class ConsoleMenuService {
             System.out.println("1. View profile");
             System.out.println("2. View requests");
             System.out.println("3. Update request status");
+            System.out.println("4. Send message");
+            System.out.println("5. View my messages");
             System.out.println("0. Logout");
             System.out.print("Choose an option: ");
 
@@ -352,6 +760,12 @@ public class ConsoleMenuService {
                 case "3":
                     updateRequestStatus();
                     break;
+                case "4":
+                    sendMessage(specialist);
+                    break;
+                case "5":
+                    viewMyMessages(specialist);
+                    break;
                 case "0":
                     inMenu = false;
                     System.out.println("Logged out.");
@@ -359,6 +773,52 @@ public class ConsoleMenuService {
                 default:
                     System.out.println("Invalid option. Try again.");
             }
+        }
+    }
+
+    private void sendMessage(Employee sender) {
+        System.out.print("Enter receiver employee login: ");
+        String receiverLogin = scanner.nextLine();
+
+        User receiver = dataStore.findUserByLogin(receiverLogin);
+
+        if (!(receiver instanceof Employee)) {
+            System.out.println("Employee receiver not found.");
+            return;
+        }
+
+        if (receiver.getLogin().equalsIgnoreCase(sender.getLogin())) {
+            System.out.println("You cannot send a message to yourself.");
+            return;
+        }
+
+        System.out.print("Enter message text: ");
+        String text = scanner.nextLine();
+
+        Message message = new Message(
+                sender.getLogin(),
+                receiver.getLogin(),
+                text,
+                LocalDateTime.now().toString()
+        );
+
+        dataStore.addMessage(message);
+        System.out.println("Message sent.");
+    }
+
+    private void viewMyMessages(Employee employee) {
+        boolean found = false;
+
+        for (Message message : dataStore.getMessages()) {
+            if (message.getSenderLogin().equalsIgnoreCase(employee.getLogin())
+                    || message.getReceiverLogin().equalsIgnoreCase(employee.getLogin())) {
+                System.out.println(message);
+                found = true;
+            }
+        }
+
+        if (!found) {
+            System.out.println("No messages found.");
         }
     }
 
@@ -506,6 +966,89 @@ public class ConsoleMenuService {
         System.out.println("Registration approved: " + registration);
     }
 
+    private void assignTeacherToCourse() {
+        printAllCourses();
+
+        System.out.print("Enter course code: ");
+        String courseCode = scanner.nextLine();
+
+        Course course = dataStore.findCourseByCode(courseCode);
+
+        if (course == null) {
+            System.out.println("Course not found.");
+            return;
+        }
+
+        System.out.print("Enter teacher login: ");
+        String teacherLogin = scanner.nextLine();
+
+        User user = dataStore.findUserByLogin(teacherLogin);
+
+        if (!(user instanceof Teacher)) {
+            System.out.println("Teacher not found.");
+            return;
+        }
+
+        course.assignTeacher(teacherLogin);
+        System.out.println("Teacher assigned to course: " + course);
+    }
+
+    private void viewManagerStatisticalReport() {
+        int totalRegistrations = dataStore.getRegistrations().size();
+        int approvedRegistrations = 0;
+        int pendingRegistrations = 0;
+
+        for (Registration registration : dataStore.getRegistrations()) {
+            if (registration.isApproved()) {
+                approvedRegistrations++;
+            } else {
+                pendingRegistrations++;
+            }
+        }
+
+        Map<String, Integer> requestStatusCounts = new HashMap<>();
+        Map<String, Integer> requestTypeCounts = new HashMap<>();
+
+        for (Request request : dataStore.getRequests()) {
+            String status = request.getStatus().toString();
+            String type = request.getRequestType();
+
+            requestStatusCounts.put(status, requestStatusCounts.getOrDefault(status, 0) + 1);
+            requestTypeCounts.put(type, requestTypeCounts.getOrDefault(type, 0) + 1);
+        }
+
+        int teacherCount = 0;
+        double totalRating = 0;
+
+        for (User user : dataStore.getUsers()) {
+            if (user instanceof Teacher) {
+                teacherCount++;
+                totalRating += ((Teacher) user).getRating();
+            }
+        }
+
+        double averageTeacherRating = 0;
+
+        if (teacherCount > 0) {
+            averageTeacherRating = totalRating / teacherCount;
+        }
+
+        int totalPapers = researchService.getAllPapersFromAllJournals().size();
+
+        System.out.println();
+        System.out.println("=== MANAGER STATISTICAL REPORT ===");
+        System.out.println("Total courses: " + dataStore.getCourses().size());
+        System.out.println("Total users: " + dataStore.getUsers().size());
+        System.out.println("Total registrations: " + totalRegistrations);
+        System.out.println("Approved registrations: " + approvedRegistrations);
+        System.out.println("Pending registrations: " + pendingRegistrations);
+        System.out.println("Requests by status: " + requestStatusCounts);
+        System.out.println("Requests by type: " + requestTypeCounts);
+        System.out.println("Teacher count: " + teacherCount);
+        System.out.println("Average teacher rating: " + String.format("%.2f", averageTeacherRating));
+        System.out.println("Research paper count: " + totalPapers);
+    }
+
     private void createNews() {
         System.out.print("Enter news title: ");
         String title = scanner.nextLine();
@@ -646,6 +1189,48 @@ public class ConsoleMenuService {
         System.out.print("Enter request text: ");
         String text = scanner.nextLine();
 
+        UrgencyLevel urgencyLevel = readUrgencyLevel();
+
+        if (urgencyLevel == null) {
+            System.out.println("Invalid urgency level.");
+            return;
+        }
+
+        Request request = requestService.createRequest(
+                id,
+                authorLogin,
+                text,
+                urgencyLevel,
+                LocalDateTime.now().toString()
+        );
+        System.out.println("Request created: " + request);
+    }
+
+    private void createTeacherComplaint(Teacher teacher) {
+        String id = "C" + (dataStore.getRequests().size() + 1);
+
+        System.out.print("Enter complaint text: ");
+        String text = scanner.nextLine();
+
+        UrgencyLevel urgencyLevel = readUrgencyLevel();
+
+        if (urgencyLevel == null) {
+            System.out.println("Invalid urgency level.");
+            return;
+        }
+
+        Request complaint = requestService.createComplaint(
+                id,
+                teacher.getLogin(),
+                text,
+                urgencyLevel,
+                LocalDateTime.now().toString()
+        );
+
+        System.out.println("Complaint sent: " + complaint);
+    }
+
+    private UrgencyLevel readUrgencyLevel() {
         System.out.println("Choose urgency level:");
         System.out.println("1. LOW");
         System.out.println("2. MEDIUM");
@@ -653,25 +1238,17 @@ public class ConsoleMenuService {
         System.out.print("Your choice: ");
 
         String urgencyChoice = scanner.nextLine();
-        UrgencyLevel urgencyLevel;
 
         switch (urgencyChoice) {
             case "1":
-                urgencyLevel = UrgencyLevel.LOW;
-                break;
+                return UrgencyLevel.LOW;
             case "2":
-                urgencyLevel = UrgencyLevel.MEDIUM;
-                break;
+                return UrgencyLevel.MEDIUM;
             case "3":
-                urgencyLevel = UrgencyLevel.HIGH;
-                break;
+                return UrgencyLevel.HIGH;
             default:
-                System.out.println("Invalid urgency level.");
-                return;
+                return null;
         }
-
-        Request request = requestService.createRequest(id, authorLogin, text, urgencyLevel, "2026-04-19");
-        System.out.println("Request created: " + request);
     }
 
     private void viewJournals() {
@@ -878,6 +1455,21 @@ public class ConsoleMenuService {
         }
 
         records.forEach(System.out::println);
+    }
+
+    private void viewAssignedCourses(Teacher teacher) {
+        boolean found = false;
+
+        for (Course course : dataStore.getCourses()) {
+            if (course.isTeacherAssigned(teacher.getLogin())) {
+                System.out.println(course);
+                found = true;
+            }
+        }
+
+        if (!found) {
+            System.out.println("No assigned courses found.");
+        }
     }
 
     private void printAllCourses() {

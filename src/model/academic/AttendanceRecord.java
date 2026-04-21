@@ -1,6 +1,10 @@
 package model.academic;
 
-public class AttendanceRecord {
+import java.io.Serializable;
+
+public class AttendanceRecord implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String studentId;
     private String courseCode;
     private int attendedLessons;

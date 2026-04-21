@@ -2,10 +2,13 @@ package model.academic;
 
 import enums.CourseType;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Course {
+public class Course implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private String courseCode;
     private String title;
     private int credits;
@@ -13,9 +16,11 @@ public class Course {
     private String majorFor;
     private int yearOfStudy;
     private List<Lesson> lessons;
+    private List<String> assignedTeacherLogins;
 
     public Course() {
         lessons = new ArrayList<>();
+        assignedTeacherLogins = new ArrayList<>();
     }
 
     public Course(String courseCode, String title, int credits, CourseType courseType,
@@ -27,6 +32,7 @@ public class Course {
         this.majorFor = majorFor;
         this.yearOfStudy = yearOfStudy;
         this.lessons = new ArrayList<>();
+        this.assignedTeacherLogins = new ArrayList<>();
     }
 
     public String getCourseCode() {
@@ -80,11 +86,55 @@ public class Course {
     }
 
     public List<Lesson> getLessons() {
+        initializeLists();
         return lessons;
     }
 
     public void addLesson(Lesson lesson) {
+        initializeLists();
         lessons.add(lesson);
+    }
+
+    public List<String> getAssignedTeacherLogins() {
+        initializeLists();
+        return assignedTeacherLogins;
+    }
+
+    public void assignTeacher(String teacherLogin) {
+        initializeLists();
+
+        if (teacherLogin == null || teacherLogin.isEmpty()) {
+            return;
+        }
+
+        for (String assignedTeacherLogin : assignedTeacherLogins) {
+            if (assignedTeacherLogin.equalsIgnoreCase(teacherLogin)) {
+                return;
+            }
+        }
+
+        assignedTeacherLogins.add(teacherLogin);
+    }
+
+    public boolean isTeacherAssigned(String teacherLogin) {
+        initializeLists();
+
+        for (String assignedTeacherLogin : assignedTeacherLogins) {
+            if (assignedTeacherLogin.equalsIgnoreCase(teacherLogin)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void initializeLists() {
+        if (lessons == null) {
+            lessons = new ArrayList<>();
+        }
+        if (assignedTeacherLogins == null) {
+            assignedTeacherLogins = new ArrayList<>();
+        }
     }
 
     @Override
@@ -94,6 +144,7 @@ public class Course {
                 ", credits=" + credits +
                 ", type=" + courseType +
                 ", majorFor=" + majorFor +
-                ", yearOfStudy=" + yearOfStudy;
+                ", yearOfStudy=" + yearOfStudy +
+                ", assignedTeachers=" + getAssignedTeacherLogins();
     }
 }

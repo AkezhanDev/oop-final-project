@@ -1,9 +1,12 @@
 package model.academic;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Transcript {
+public class Transcript implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private Map<String, Mark> courseMarks;
 
     public Transcript() {

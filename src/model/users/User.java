@@ -2,9 +2,13 @@ package model.users;
 
 import enums.Language;
 
+import java.io.Serializable;
+import java.util.List;
 import java.util.Objects;
 
-public class User {
+public class User implements Serializable {
+    private static final long serialVersionUID = 1L;
+
     private static int nextId = 1;
 
     private int id;
@@ -28,6 +32,18 @@ public class User {
 
     public int getId() {
         return id;
+    }
+
+    public static void synchronizeNextId(List<User> users) {
+        int maxId = 0;
+
+        for (User user : users) {
+            if (user.getId() > maxId) {
+                maxId = user.getId();
+            }
+        }
+
+        nextId = maxId + 1;
     }
 
     public String getLogin() {

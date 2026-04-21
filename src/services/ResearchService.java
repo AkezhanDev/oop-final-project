@@ -5,9 +5,12 @@ import model.research.Journal;
 import model.research.ResearchPaper;
 import model.research.ResearchProject;
 import storage.DataStore;
+import util.CitationComparator;
+import util.DateComparator;
+import util.PagesComparator;
 
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,15 +39,19 @@ public class ResearchService {
     }
 
     public void sortPapersByCitations(List<ResearchPaper> papers) {
-        papers.sort(Comparator.comparingInt(ResearchPaper::getCitations).reversed());
+        papers.sort(new CitationComparator());
     }
 
     public void sortPapersByPages(List<ResearchPaper> papers) {
-        papers.sort(Comparator.comparingInt(ResearchPaper::getPages));
+        papers.sort(new PagesComparator());
     }
 
     public void sortPapersByDate(List<ResearchPaper> papers) {
-        papers.sort(Comparator.comparing(ResearchPaper::getPublicationDate));
+        papers.sort(new DateComparator());
+    }
+
+    public void sortPapersByTitle(List<ResearchPaper> papers) {
+        Collections.sort(papers);
     }
 
     public List<Journal> getAllJournals() {
