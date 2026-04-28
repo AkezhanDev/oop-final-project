@@ -1,8 +1,8 @@
 package model.research;
 
 import exceptions.NotResearcherException;
-import interfaces.Researcher;
 import model.users.User;
+import storage.DataStore;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -13,7 +13,7 @@ public class ResearchProject implements Serializable {
 
     private String topic;
     private List<String> participants;
-    private List<Researcher> researcherParticipants;
+    private List<ResearcherDecorator> researcherParticipants;
     private List<ResearchPaper> publishedPapers;
 
     public ResearchProject() {
@@ -38,7 +38,7 @@ public class ResearchProject implements Serializable {
         return participants;
     }
 
-    public List<Researcher> getResearcherParticipants() {
+    public List<ResearcherDecorator> getResearcherParticipants() {
         initializeCollections();
         return researcherParticipants;
     }
@@ -53,14 +53,20 @@ public class ResearchProject implements Serializable {
     }
 
     public void addParticipant(User user) throws NotResearcherException {
-        if (!(user instanceof Researcher)) {
+        if (user == null) {
             throw new NotResearcherException("Only researchers can join research projects.");
         }
 
-        addResearcherParticipant((Researcher) user);
+        ResearcherDecorator researcher = DataStore.getInstance().findResearcherByUserLogin(user.getLogin());
+
+        if (researcher == null) {
+            throw new NotResearcherException("Only researchers can join research projects.");
+        }
+
+        addResearcherParticipant(researcher);
     }
 
-    public void addResearcherParticipant(Researcher researcher) {
+    public void addResearcherParticipant(ResearcherDecorator researcher) {
         initializeCollections();
 
         if (researcher == null) {
@@ -99,12 +105,8 @@ public class ResearchProject implements Serializable {
         }
     }
 
-    private String getResearcherName(Researcher researcher) {
-        if (researcher instanceof User) {
-            return ((User) researcher).getName();
-        }
-
-        return researcher.toString();
+    private String getResearcherName(ResearcherDecorator researcher) {
+        return researcher.getResearcherName();
     }
 
     @Override

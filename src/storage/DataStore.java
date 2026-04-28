@@ -9,6 +9,7 @@ import model.communication.News;
 import model.requests.Request;
 import model.research.Journal;
 import model.research.ResearchProject;
+import model.research.ResearcherDecorator;
 import model.users.User;
 
 import java.io.File;
@@ -38,6 +39,7 @@ public class DataStore implements Serializable {
     private List<Request> requests;
     private List<Journal> journals;
     private List<ResearchProject> researchProjects;
+    private List<ResearcherDecorator> researcherDecorators;
     private Map<String, Transcript> transcripts;
     private List<AttendanceRecord> attendanceRecords;
 
@@ -51,6 +53,7 @@ public class DataStore implements Serializable {
         requests = new ArrayList<>();
         journals = new ArrayList<>();
         researchProjects = new ArrayList<>();
+        researcherDecorators = new ArrayList<>();
         transcripts = new HashMap<>();
         attendanceRecords = new ArrayList<>();
     }
@@ -75,8 +78,8 @@ public class DataStore implements Serializable {
             instance.initializeMissingCollections();
             User.synchronizeNextId(instance.users);
             return instance;
-        } catch (IOException | ClassNotFoundException e) {
-            System.out.println("Could not load saved data. Starting with empty data store.");
+        } catch (IOException | ClassNotFoundException | ClassCastException e) {
+            System.out.println("Saved data is not compatible with the current version. Starting with empty data store.");
             instance = new DataStore();
             return instance;
         }
@@ -118,6 +121,9 @@ public class DataStore implements Serializable {
         if (researchProjects == null) {
             researchProjects = new ArrayList<>();
         }
+        if (researcherDecorators == null) {
+            researcherDecorators = new ArrayList<>();
+        }
         if (transcripts == null) {
             transcripts = new HashMap<>();
         }
@@ -135,6 +141,7 @@ public class DataStore implements Serializable {
                 && requests.isEmpty()
                 && journals.isEmpty()
                 && researchProjects.isEmpty()
+                && researcherDecorators.isEmpty()
                 && transcripts.isEmpty()
                 && attendanceRecords.isEmpty();
     }
@@ -175,6 +182,10 @@ public class DataStore implements Serializable {
         return researchProjects;
     }
 
+    public List<ResearcherDecorator> getResearcherDecorators() {
+        return researcherDecorators;
+    }
+
     public Map<String, Transcript> getTranscripts() {
         return transcripts;
     }
@@ -188,7 +199,15 @@ public class DataStore implements Serializable {
     }
 
     public boolean removeUser(User user) {
-        return users.remove(user);
+        boolean removed = users.remove(user);
+
+        if (removed && user != null) {
+            researcherDecorators.removeIf(researcherDecorator ->
+                    researcherDecorator.getUser() != null
+                            && researcherDecorator.getUser().equals(user));
+        }
+
+        return removed;
     }
 
     public void addLog(LogEntry logEntry) {
@@ -221,6 +240,33 @@ public class DataStore implements Serializable {
 
     public void addResearchProject(ResearchProject researchProject) {
         researchProjects.add(researchProject);
+    }
+
+    public void addResearcherDecorator(ResearcherDecorator researcherDecorator) {
+        if (researcherDecorator == null || researcherDecorator.getUser() == null) {
+            return;
+        }
+
+        ResearcherDecorator existing = findResearcherByUserLogin(researcherDecorator.getUser().getLogin());
+
+        if (existing == null) {
+            researcherDecorators.add(researcherDecorator);
+        }
+    }
+
+    public ResearcherDecorator findResearcherByUserLogin(String login) {
+        if (login == null) {
+            return null;
+        }
+
+        for (ResearcherDecorator researcherDecorator : researcherDecorators) {
+            if (researcherDecorator.getUser() != null
+                    && researcherDecorator.getUser().getLogin().equalsIgnoreCase(login)) {
+                return researcherDecorator;
+            }
+        }
+
+        return null;
     }
 
     public void putTranscript(String studentId, Transcript transcript) {

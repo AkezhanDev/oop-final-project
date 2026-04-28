@@ -4,7 +4,7 @@ import enums.Language;
 import enums.ManagerType;
 import enums.TeacherPosition;
 import exceptions.InvalidSupervisorException;
-import interfaces.Researcher;
+import model.research.ResearcherDecorator;
 import model.users.Admin;
 import model.users.Employee;
 import model.users.GraduateStudent;
@@ -33,7 +33,7 @@ public class UserFactory {
     public static GraduateStudent createGraduateStudent(String login, String password, String name, Language language,
                                                         String studentId, int yearOfStudy, String major,
                                                         int credits, int failedCoursesCount,
-                                                        String degreeType, Researcher supervisor,
+                                                        String degreeType, ResearcherDecorator supervisor,
                                                         int publishedPapersCount)
             throws InvalidSupervisorException {
         return new GraduateStudent(login, password, name, language, studentId, yearOfStudy, major,

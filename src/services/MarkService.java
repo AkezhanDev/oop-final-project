@@ -6,9 +6,11 @@ import storage.DataStore;
 
 public class MarkService {
     private DataStore dataStore;
+    private RegistrationService registrationService;
 
     public MarkService() {
         this.dataStore = DataStore.getInstance();
+        this.registrationService = new RegistrationService();
     }
 
     public Mark createMark(double firstAttestation, double secondAttestation, double finalExam) {
@@ -28,5 +30,6 @@ public class MarkService {
         }
 
         transcript.addMark(courseCode, mark);
+        registrationService.completeRegistrationByMark(studentId, courseCode, mark.calculateTotal());
     }
 }

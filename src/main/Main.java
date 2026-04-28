@@ -9,6 +9,7 @@ import model.requests.Request;
 import model.research.Journal;
 import model.research.ResearchPaper;
 import model.research.ResearchProject;
+import model.research.ResearcherDecorator;
 import model.users.*;
 import services.ConsoleMenuService;
 import storage.DataStore;
@@ -55,7 +56,10 @@ public class Main {
                     4.8
             );
 
-            teacher.publishPaper(new ResearchPaper(
+            ResearcherDecorator teacherResearcher = new ResearcherDecorator(teacher);
+            dataStore.addResearcherDecorator(teacherResearcher);
+
+            teacherResearcher.publishPaper(new ResearchPaper(
                     "Object-Oriented Education Methods",
                     "Madina",
                     "KBTU Research Journal",
@@ -64,7 +68,7 @@ public class Main {
                     6,
                     "10.1000/kbtu.2023.001"
             ));
-            teacher.publishPaper(new ResearchPaper(
+            teacherResearcher.publishPaper(new ResearchPaper(
                     "Research Skills in Computer Science",
                     "Madina",
                     "KBTU Research Journal",
@@ -73,7 +77,7 @@ public class Main {
                     5,
                     "10.1000/kbtu.2024.002"
             ));
-            teacher.publishPaper(new ResearchPaper(
+            teacherResearcher.publishPaper(new ResearchPaper(
                     "Student Success in Programming Courses",
                     "Madina",
                     "Education Systems Review",
@@ -97,13 +101,16 @@ public class Main {
                         15,
                         0,
                         "Master",
-                        teacher,
+                        teacherResearcher,
                         2
                 );
             } catch (InvalidSupervisorException e) {
                 System.out.println(e.getMessage());
                 return;
             }
+
+            ResearcherDecorator graduateResearcher = new ResearcherDecorator(graduateStudent);
+            dataStore.addResearcherDecorator(graduateResearcher);
 
             Manager manager = new Manager(
                     "manager1",
@@ -171,6 +178,7 @@ public class Main {
             Course statsCourse = new Course(
                     "ST201",
                     "Statistics",
+
                     4,
                     CourseType.MINOR,
                     "Data Science",
@@ -203,13 +211,13 @@ public class Main {
             );
 
             ResearchProject researchProject1 = new ResearchProject("Student Performance Analysis");
-            researchProject1.addResearcherParticipant(graduateStudent);
-            researchProject1.addResearcherParticipant(teacher);
+            researchProject1.addResearcherParticipant(graduateResearcher);
+            researchProject1.addResearcherParticipant(teacherResearcher);
             researchProject1.addPublishedPaper(paper1);
 
             ResearchProject researchProject2 = new ResearchProject("Attendance and Academic Results");
-            researchProject2.addResearcherParticipant(teacher);
-            researchProject2.addResearcherParticipant(graduateStudent);
+            researchProject2.addResearcherParticipant(teacherResearcher);
+            researchProject2.addResearcherParticipant(graduateResearcher);
             researchProject2.addPublishedPaper(paper2);
 
             dataStore.addResearchProject(researchProject1);

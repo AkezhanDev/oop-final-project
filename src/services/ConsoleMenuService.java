@@ -1,6 +1,7 @@
 package services;
 
 import enums.CitationFormat;
+import enums.CourseStatus;
 import enums.Language;
 import enums.ManagerType;
 import enums.TeacherPosition;
@@ -8,7 +9,6 @@ import enums.UrgencyLevel;
 import exceptions.AuthenticationFailedException;
 import exceptions.CreditLimitExceededException;
 import exceptions.InvalidSupervisorException;
-import interfaces.Researcher;
 import model.academic.AttendanceRecord;
 import model.academic.Course;
 import model.academic.Mark;
@@ -18,8 +18,10 @@ import model.communication.Comment;
 import model.communication.Message;
 import model.communication.News;
 import model.requests.Request;
+import model.research.ResearcherDecorator;
 import model.users.Admin;
 import model.users.Employee;
+import model.users.GraduateStudent;
 import model.users.Manager;
 import model.users.Student;
 import model.users.Teacher;
@@ -135,6 +137,8 @@ public class ConsoleMenuService {
         boolean inMenu = true;
 
         while (inMenu) {
+            ResearcherDecorator researcher = dataStore.findResearcherByUserLogin(student.getLogin());
+
             System.out.println();
             System.out.println("=== STUDENT MENU ===");
             System.out.println("1. View profile");
@@ -143,6 +147,12 @@ public class ConsoleMenuService {
             System.out.println("4. View all courses");
             System.out.println("5. View news");
             System.out.println("6. Rate teacher");
+            if (researcher != null) {
+                System.out.println("7. View journals");
+                System.out.println("8. View research projects");
+                System.out.println("9. View all papers");
+                System.out.println("10. View my research profile");
+            }
             System.out.println("0. Logout");
             System.out.print("Choose an option: ");
 
@@ -171,6 +181,34 @@ public class ConsoleMenuService {
                     break;
                 case "6":
                     rateTeacher();
+                    break;
+                case "7":
+                    if (researcher != null) {
+                        viewJournals();
+                    } else {
+                        System.out.println("Invalid option. Try again.");
+                    }
+                    break;
+                case "8":
+                    if (researcher != null) {
+                        viewResearchProjects();
+                    } else {
+                        System.out.println("Invalid option. Try again.");
+                    }
+                    break;
+                case "9":
+                    if (researcher != null) {
+                        viewAllResearchPapers();
+                    } else {
+                        System.out.println("Invalid option. Try again.");
+                    }
+                    break;
+                case "10":
+                    if (researcher != null) {
+                        viewMyResearchProfile(researcher);
+                    } else {
+                        System.out.println("Invalid option. Try again.");
+                    }
                     break;
                 case "0":
                     inMenu = false;
@@ -201,6 +239,7 @@ public class ConsoleMenuService {
             System.out.println("11. Send message");
             System.out.println("12. View my messages");
             System.out.println("13. View assigned courses");
+            System.out.println("14. View my research profile");
             System.out.println("0. Logout");
             System.out.print("Choose an option: ");
 
@@ -245,6 +284,9 @@ public class ConsoleMenuService {
                     break;
                 case "13":
                     viewAssignedCourses(teacher);
+                    break;
+                case "14":
+                    viewResearchProfileForUser(teacher);
                     break;
                 case "0":
                     inMenu = false;
@@ -456,8 +498,15 @@ public class ConsoleMenuService {
         }
 
         dataStore.addUser(newUser);
+        addResearcherDecoratorIfNeeded(newUser);
         addAdminLog("Added user " + login, admin);
         System.out.println("User added: " + newUser);
+    }
+
+    private void addResearcherDecoratorIfNeeded(User user) {
+        if (user instanceof Teacher || user instanceof GraduateStudent) {
+            dataStore.addResearcherDecorator(new ResearcherDecorator(user));
+        }
     }
 
     private User createStudentWithFactory(String login, String password, String name, Language language) {
@@ -502,9 +551,9 @@ public class ConsoleMenuService {
         System.out.print("Enter supervisor login: ");
         String supervisorLogin = scanner.nextLine();
 
-        User supervisorUser = dataStore.findUserByLogin(supervisorLogin);
+        ResearcherDecorator supervisor = dataStore.findResearcherByUserLogin(supervisorLogin);
 
-        if (!(supervisorUser instanceof Researcher)) {
+        if (supervisor == null) {
             System.out.println("Supervisor must be a researcher.");
             return null;
         }
@@ -515,7 +564,7 @@ public class ConsoleMenuService {
         try {
             return UserFactory.createGraduateStudent(login, password, name, language,
                     studentId, yearOfStudy, major, credits, failedCoursesCount,
-                    degreeType, (Researcher) supervisorUser, publishedPapersCount);
+                    degreeType, supervisor, publishedPapersCount);
         } catch (InvalidSupervisorException e) {
             System.out.println(e.getMessage());
             return null;
@@ -822,6 +871,24 @@ public class ConsoleMenuService {
         }
     }
 
+    private void viewResearchProfileForUser(User user) {
+        ResearcherDecorator researcher = dataStore.findResearcherByUserLogin(user.getLogin());
+
+        if (researcher == null) {
+            System.out.println("This user does not have a researcher role.");
+            return;
+        }
+
+        viewMyResearchProfile(researcher);
+    }
+
+    private void viewMyResearchProfile(ResearcherDecorator researcher) {
+        System.out.println("Researcher: " + researcher.getResearcherName());
+        System.out.println("H-index: " + researcher.calculateHIndex());
+        System.out.println("Research papers:");
+        researcher.printPapers(null);
+    }
+
     private void openSearchMenu() {
         boolean inMenu = true;
 
@@ -995,15 +1062,15 @@ public class ConsoleMenuService {
 
     private void viewManagerStatisticalReport() {
         int totalRegistrations = dataStore.getRegistrations().size();
-        int approvedRegistrations = 0;
-        int pendingRegistrations = 0;
+        Map<String, Integer> registrationStatusCounts = new HashMap<>();
 
         for (Registration registration : dataStore.getRegistrations()) {
-            if (registration.isApproved()) {
-                approvedRegistrations++;
-            } else {
-                pendingRegistrations++;
-            }
+            String status = registration.getStatus().toString();
+            registrationStatusCounts.put(status, registrationStatusCounts.getOrDefault(status, 0) + 1);
+        }
+
+        for (CourseStatus status : CourseStatus.values()) {
+            registrationStatusCounts.putIfAbsent(status.toString(), 0);
         }
 
         Map<String, Integer> requestStatusCounts = new HashMap<>();
@@ -1040,8 +1107,7 @@ public class ConsoleMenuService {
         System.out.println("Total courses: " + dataStore.getCourses().size());
         System.out.println("Total users: " + dataStore.getUsers().size());
         System.out.println("Total registrations: " + totalRegistrations);
-        System.out.println("Approved registrations: " + approvedRegistrations);
-        System.out.println("Pending registrations: " + pendingRegistrations);
+        System.out.println("Registrations by status: " + registrationStatusCounts);
         System.out.println("Requests by status: " + requestStatusCounts);
         System.out.println("Requests by type: " + requestTypeCounts);
         System.out.println("Teacher count: " + teacherCount);
